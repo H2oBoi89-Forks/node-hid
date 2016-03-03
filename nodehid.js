@@ -27,9 +27,7 @@ class HID extends binding.HID {
          this.setNonBlocking(1);
       }
 
-      process.nextTick(() => {
-         this._read();
-      });
+      this._read();
    }
 
    /**
@@ -48,7 +46,8 @@ class HID extends binding.HID {
          this._stop = true;
          this.removeAllListeners();
          super.close();
-      } catch (error) {
+      }
+      catch (error) {
          console.log('error during hid.cc close: ' + error);
       }
    }
@@ -61,9 +60,12 @@ class HID extends binding.HID {
       console.log('reading...');
       this.read((error, data) => {
          console.log('e: ' + error);
-         console.log('d: ' + data.toString('hex'));
+         if (data !== undefined) {
+            console.log('d: ' + data.toString('hex'));
+         }
          if (error) {
             if (!this._stop) {
+               this._stop;
                /**
                 * Fired when an error occurs
                 * @event HID#error
@@ -71,7 +73,8 @@ class HID extends binding.HID {
                 */
                this.emit("error", error);
             }
-         } else {
+         }
+         else {
             if (data.length > 0) {
                /**
                 * Fired when data is recieved
@@ -84,7 +87,8 @@ class HID extends binding.HID {
 
          if (!this._stop) {
             this._read();
-         } else {
+         }
+         else {
             console.log('stopping read');
          }
       });

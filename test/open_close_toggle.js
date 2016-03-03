@@ -32,7 +32,7 @@ var onTimeout = () => {
 }
 
 console.log('starting timeout...');
-var t = setTimeout(() => onTimeout, timeout);
+var t = setTimeout(onTimeout, timeout);
 
 console.log('waiting...');
 
