@@ -14,7 +14,8 @@ console.log('path: ' + path);
 console.log();
 
 var i = 0;
-var timeout = 100;
+var timeout = 250;
+var limit = 5;
 
 var hid = new HID(path);
 
@@ -23,12 +24,15 @@ console.log(hid);
 hid.close();
 
 var onTimeout = () => {
-   console.log(Date.now());
+   i++;
+   console.log(i + ': ' + new Date().toISOString());
    hid = new HID(path);
 
    hid.close();
 
-   setTimeout(onTimeout, timeout);
+   if (i < limit) {
+      setTimeout(onTimeout, timeout);
+   }
 }
 
 console.log('starting timeout...');
@@ -38,4 +42,4 @@ console.log('waiting...');
 
 setTimeout(() => {
    console.log('test');
-}, 1000);
+}, limit * timeout + 250);
