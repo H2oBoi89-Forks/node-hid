@@ -1,97 +1,120 @@
-var EventEmitter = require("events").EventEmitter,
-	util = require("util");
+'use strict';
 
-//Load C++ binding
-//var binding = require("./build/Release/HID.node");
+var EventEmitter = require("events").EventEmitter;
+
+// Load C++ binding
 var binary = require('node-pre-gyp');
 var path = require('path');
-var binding_path = binary.find(path.resolve(path.join(__dirname,'./package.json')));
+var binding_path = binary.find(path.resolve(path.join(__dirname, './package.json')));
 var binding = require(binding_path);
 
-//This class is a wrapper for `binding.HID` class
-function HID() {
-	//Inherit from EventEmitter
-	EventEmitter.call(this);
+/**
+ * Represents a USB HID device
+ * @emits HID#data
+ * @emits HID#error
+ */
+class HID extends binding.HID {
+   /**
+    * Creates an intance of the HID class.
+    * @param {string} path Device path of the device we want to connect to.
+    */
+   constructor(path) {
+      super(path);
 
-	/* We also want to inherit from `binding.HID`, but unfortunately,
-		it's not so easy for native Objects. For example, the
-		following won't work since `new` keyword isn't used:
+      this._stop = false;
 
-		`binding.HID.apply(this, arguments);`
+      if (process.platform === 'win32') {
+         this.setNonBlocking(1);
+      }
 
-		So... we do this craziness instead...
-	*/
-	var thisPlusArgs = new Array(arguments.length + 1);
-	thisPlusArgs[0] = null;
-	for(var i = 0; i < arguments.length; i++)
-		thisPlusArgs[i + 1] = arguments[i];
-	this._raw = new (Function.prototype.bind.apply(binding.HID,
-		thisPlusArgs) )();
+      process.nextTick(() => {
+         this._read();
+      });
+   }
 
-	/* Now we have `this._raw` Object from which we need to
-		inherit.  So, one solution is to simply copy all
-		prototype methods over to `this` and binding them to
-		`this._raw`
-	*/
-	for(var i in binding.HID.prototype)
-		if(i != "close")
-			this[i] = binding.HID.prototype[i].bind(this._raw);
+   /**
+    * Writes data to the device
+    * @param {number[]} data Data to send to device
+    */
+   write(data) {
+      super.write(data);
+   }
 
-	/* We are now done inheriting from `binding.HID` and EventEmitter.
+   /**
+    * Closes this device.
+    */
+   close() {
+      try {
+         this._stop = true;
+         this.removeAllListeners();
+         super.close();
+      } catch (error) {
+         console.log('error during hid.cc close: ' + error);
+      }
+   }
 
-		Now upon adding a new listener for "data" events, we start
-		polling the HID device using `read(...)`
-		See `resume()` for more details. */
-	this._paused = true;
-	var self = this;
-	self.on("newListener", function(eventName, listener) {
-		if(eventName == "data")
-			process.nextTick(self.resume.bind(self) );
-	});
+   /**
+    * Read loop
+    * @private
+    */
+   _read() {
+      console.log('reading...');
+      this.read((error, data) => {
+         console.log('e: ' + error);
+         console.log('d: ' + data.toString('hex'));
+         if (error) {
+            if (!this._stop) {
+               /**
+                * Fired when an error occurs
+                * @event HID#error
+                * @type {Error}
+                */
+               this.emit("error", error);
+            }
+         } else {
+            if (data.length > 0) {
+               /**
+                * Fired when data is recieved
+                * @event HID#data
+                * @type {number[]}
+                */
+               this.emit("data", data);
+            }
+         }
+
+         if (!this._stop) {
+            this._read();
+         } else {
+            console.log('stopping read');
+         }
+      });
+   }
+
+   /**
+    * Gets a list of available devices.
+    * Default arguments will return all USB HID devices.
+    * @param {number} [vid] Vendor ID to filter by.
+    * @param {number} [pid] Product ID to filter by.
+    */
+   static devices(vid, pid) {
+      vid = vid | 0x00;
+      pid = pid | 0x00;
+
+      return binding.devices(vid, pid);
+   }
 }
-//Inherit prototype methods
-util.inherits(HID, EventEmitter);
-//Don't inherit from `binding.HID`; that's done above already!
 
-HID.prototype.close = function close() {
-	this._closing = true;
-	this.removeAllListeners();
-	this._raw.close();
-};
-//Pauses the reader, which stops "data" events from being emitted
-HID.prototype.pause = function pause() {
-	this._paused = true;
-};
-HID.prototype.resume = function pause() {
-	var self = this;
-	if(self._paused && self.listeners("data").length > 0)
-	{
-		//Start polling & reading loop
-		self._paused = false;
-		self.read(function readFunc(err, data) {
-			if(err)
-			{
-				//Emit error and pause reading
-				self._paused = true;
-				if(!self._closing)
-					self.emit("error", err);
-				//else ignore any errors if I'm closing the device
-			}
-			else
-			{
-				//If there are no "data" listeners, we pause
-				if(self.listeners("data").length <= 0)
-					self._paused = true;
-				//Keep reading if we aren't paused
-				if(!self._paused)
-					self.read(readFunc);
-				//Now emit the event
-				self.emit("data", data);
-			}
-		});
-	}
-};
+function mixin(target, source) {
+   target = target.prototype;
+   source = source.prototype;
 
-//Expose API
-exports.HID = HID;
-exports.devices = binding.devices;
+   Object.getOwnPropertyNames(source).forEach(function(name) {
+      if (name !== "constructor") Object.defineProperty(target, name,
+         Object.getOwnPropertyDescriptor(source, name));
+   });
+}
+
+// We also want to extend EventEmitter
+mixin(HID, EventEmitter);
+
+module.exports = HID;
