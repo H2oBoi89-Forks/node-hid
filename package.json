@@ -1,11 +1,12 @@
 {
   "name": "node-hid",
   "description": "USB HID device access library",
-  "version": "0.5.1",
+  "version": "0.6.0",
   "author": "Hans Hübner <hans.huebner@gmail.com> (https://github.com/hanshuebner)",
   "contributors": [
     "Blake Miner <miner.blake@gmail.com>",
-    "Tod Kurt <todbotdotcom@gmail.com> (https://github.com/todbot)"
+    "Tod Kurt <todbotdotcom@gmail.com> (https://github.com/todbot)",
+    "Waters <h2oboi89@gmail.com> (https://github.com/h2oboi89)"
   ],
   "repository": {
     "type": "git",

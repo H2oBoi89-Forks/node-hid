@@ -42,14 +42,9 @@ class HID extends binding.HID {
     * Closes this device.
     */
    close() {
-      try {
-         this._stop = true;
-         this.removeAllListeners();
-         super.close();
-      }
-      catch (error) {
-         console.log('error during hid.cc close: ' + error);
-      }
+      this._stop = true;
+      this.removeAllListeners();
+      super.close();
    }
 
    /**
@@ -57,12 +52,7 @@ class HID extends binding.HID {
     * @private
     */
    _read() {
-      console.log('reading...');
       this.read((error, data) => {
-         console.log('e: ' + error);
-         if (data !== undefined) {
-            console.log('d: ' + data.toString('hex'));
-         }
          if (error) {
             if (!this._stop) {
                this._stop;
@@ -73,8 +63,7 @@ class HID extends binding.HID {
                 */
                this.emit("error", error);
             }
-         }
-         else {
+         } else {
             if (data.length > 0) {
                /**
                 * Fired when data is recieved
@@ -87,9 +76,6 @@ class HID extends binding.HID {
 
          if (!this._stop) {
             this._read();
-         }
-         else {
-            console.log('stopping read');
          }
       });
    }
