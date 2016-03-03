@@ -44,6 +44,7 @@ class HID extends binding.HID {
    close() {
       this._stop = true;
       this.removeAllListeners();
+      this.write([0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x03]);
       super.close();
    }
 
@@ -76,6 +77,8 @@ class HID extends binding.HID {
 
          if (!this._stop) {
             this._read();
+         } else {
+            console.log('stopping read');
          }
       });
    }

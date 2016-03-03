@@ -34,7 +34,7 @@ var onData = (data) => {
    console.log(data);
    console.log();
 
-   if (i < 5) {
+   if (i < 50) {
       if (i > 2) {
          hid.close();
 
