@@ -14,97 +14,99 @@ var binding = require(binding_path);
  * @emits HID#error
  */
 class HID extends binding.HID {
-   /**
-    * Creates an intance of the HID class.
-    * @param {string} path Device path of the device we want to connect to.
-    */
-   constructor(path) {
-      super(path);
+  // We also extend EventEmitter via the mixin function
+  /**
+   * Creates an intance of the HID class.
+   * @param {string} path Device path of the device we want to connect to.
+   */
+  constructor(path) {
+    super(path);
 
-      this._stop = false;
+    this._stop = false;
 
-      if (process.platform === 'win32') {
-         this.setNonBlocking(1);
+    if (process.platform === 'win32') {
+      this.setNonBlocking(1);
+    }
+
+    this._read();
+  }
+
+  /**
+   * Writes data to the device
+   * @param {number[]} data Data to send to device
+   */
+  write(data) {
+    super.write(data);
+  }
+
+  /**
+   * Closes this device.
+   */
+  close() {
+    this._stop = true;
+    this.removeAllListeners();
+    super.close();
+  }
+
+  /**
+   * Read loop
+   * @private
+   */
+  _read() {
+    this.read((error, data) => {
+      if (error) {
+        if (!this._stop) {
+          this._stop;
+          /**
+           * Fired when an error occurs
+           * @event HID#error
+           * @type {Error}
+           */
+          this.emit("error", error);
+        }
+      }
+      else {
+        if (data.length > 0) {
+          /**
+           * Fired when data is recieved
+           * @event HID#data
+           * @type {number[]}
+           */
+          this.emit("data", data);
+        }
       }
 
-      this._read();
-   }
+      if (!this._stop) {
+        this._read();
+      }
+      else {
+        console.log('stopping read');
+      }
+    });
+  }
 
-   /**
-    * Writes data to the device
-    * @param {number[]} data Data to send to device
-    */
-   write(data) {
-      super.write(data);
-   }
+  /**
+   * Gets a list of available devices.
+   * Default arguments will return all USB HID devices.
+   * @param {number} [vid] Vendor ID to filter by.
+   * @param {number} [pid] Product ID to filter by.
+   */
+  static devices(vid, pid) {
+    vid = vid | 0x00;
+    pid = pid | 0x00;
 
-   /**
-    * Closes this device.
-    */
-   close() {
-      this._stop = true;
-      this.removeAllListeners();
-      this.write([0x00, 0x00, 0x00, 0x00, 0x01, 0x01, 0x03]);
-      super.close();
-   }
-
-   /**
-    * Read loop
-    * @private
-    */
-   _read() {
-      this.read((error, data) => {
-         if (error) {
-            if (!this._stop) {
-               this._stop;
-               /**
-                * Fired when an error occurs
-                * @event HID#error
-                * @type {Error}
-                */
-               this.emit("error", error);
-            }
-         } else {
-            if (data.length > 0) {
-               /**
-                * Fired when data is recieved
-                * @event HID#data
-                * @type {number[]}
-                */
-               this.emit("data", data);
-            }
-         }
-
-         if (!this._stop) {
-            this._read();
-         } else {
-            console.log('stopping read');
-         }
-      });
-   }
-
-   /**
-    * Gets a list of available devices.
-    * Default arguments will return all USB HID devices.
-    * @param {number} [vid] Vendor ID to filter by.
-    * @param {number} [pid] Product ID to filter by.
-    */
-   static devices(vid, pid) {
-      vid = vid | 0x00;
-      pid = pid | 0x00;
-
-      return binding.devices(vid, pid);
-   }
+    return binding.devices(vid, pid);
+  }
 }
 
 function mixin(target, source) {
-   target = target.prototype;
-   source = source.prototype;
+  target = target.prototype;
+  source = source.prototype;
 
-   Object.getOwnPropertyNames(source).forEach(function(name) {
-      if (name !== "constructor") Object.defineProperty(target, name,
-         Object.getOwnPropertyDescriptor(source, name));
-   });
+  Object.getOwnPropertyNames(source).forEach(function(name) {
+    if (name !== "constructor") Object.defineProperty(target, name,
+      Object.getOwnPropertyDescriptor(source, name));
+  });
 }
 
 // We also want to extend EventEmitter
